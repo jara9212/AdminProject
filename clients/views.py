@@ -15,6 +15,8 @@ def show(request):
 
 
 def login(request):
+	if request.user.is_authenticated():
+		return redirect('client:dashboard')
 	message = None
 	# nombre = "José"
 	# edad = 17
@@ -41,7 +43,7 @@ def login(request):
 	}
 	return render(request, 'login.html', context)
 
-@login_required
+@login_required(LOGIN_URL = 'client:login')
 def dashboard(request):
 	return render(request, 'dashboard.html', {})
 
