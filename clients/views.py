@@ -1,24 +1,37 @@
-from django.shortcuts import render
-from django.shortcuts import redirect
-from django.http import HttpResponse
+from django.shortcuts import render,redirect
+from django.http import HttpResponseRedirect
+from django.core.urlresolvers import reverse_lazy
 
-from .forms import LoginForm,CreateUserForm
+from django.contrib.auth.models import User
 
-from django.contrib.auth import authenticate
-from django.contrib.auth import login as login_django
-from django.contrib.auth import logout as logout_django
+from .forms import LoginUserForm,CreateUserForm,EditUserForm,EditPasswordForm
+
+from django.contrib.auth import authenticate,login as login_django,logout as logout_django,update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 
-from django.views.generic import View
+from django.views.generic import View,DetailView,CreateView
+from django.views.generic.edit import UpdateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 
+
 # Create your views here.
-def show(request):
-	return HttpResponse("Hola desde el cliente")
+"""
+Clases 
+"""
+class ShowClass(DetailView):
+	model = User
+	template_name = 'show.html'
+	#Filtrar por username ---Por default lo hace por el id--pk
+	slug_field = 'username'
+	#que atributo de la url
+	slug_url_kwarg = 'username_url'
+
+# def show(request):
+# 	return HttpResponse("Hola desde el cliente")
 
 
-class LoginView(View):
-	form = LoginForm()
+class LoginClass(View):
+	form = LoginUserForm()
 	message = None
 	template = 'login.html'
 
@@ -43,8 +56,6 @@ class LoginView(View):
 
 	def get_context(self):
 		return {'form':self.form, 'message':self.message}
-
-		
 
 # def login_en_funciones(request):
 # 	if request.user.is_authenticated():
@@ -76,7 +87,7 @@ class LoginView(View):
 # 	return render(request, 'login.html', context)
 
 
-class dashboardView(LoginRequiredMixin, View):
+class dashboardClass(LoginRequiredMixin, View):
 	login_url = 'cliente:login'
 
 	def get(self, request, *args, **kwargs):
@@ -87,20 +98,85 @@ class dashboardView(LoginRequiredMixin, View):
 # 	return render(request, 'dashboard.html', {})
 
 
+
+class CreateClass(CreateView):
+	success_url = reverse_lazy('client:login')
+	model = User
+	template_name = 'create.html'
+	form_class = CreateUserForm
+
+	def form_valid(self, form):
+		self.object = form.save(commit=False)
+		self.object.set_password(self.object.password)
+		self.object.save()
+		return HttpResponseRedirect(self.get_success_url())
+
+# def create(request):
+# 	form = CreateUserForm(request.POST or None)
+# 	if request.method == 'POST':
+# 		if form.is_valid():
+# 			user = form.save(commit=false)
+# 			user.set_password(user.password)
+# 			user.save()
+# 			return redirect('client:login')
+
+# 	context = {
+# 		'form' : form
+# 	}
+# 	return render(request, 'create.html', context)
+
+class EditClass(LoginRequiredMixin, UpdateView):
+	login_url = 'cliente:login'
+	model = User
+	template_name = 'edit.html'
+	success_url = reverse_lazy('client:dashboard')
+	form_class = EditUserForm
+
+	def get_object(self, queryset=None):
+		return self.request.user
+
+
+
+"""
+Funciones
+"""
+@login_required(login_url = 'client:login')
+def edit_password(request):
+	message = None
+	form = EditPasswordForm(request.POST or None)
+	
+	if request.method == 'POST':
+		if form.is_valid():
+			current_password = form.cleaned_data['password']
+			new_password = form.cleaned_data['new_password']
+
+			if authenticate(username = request.user.username, password = current_password):
+				request.user.set_password(new_password)
+				request.user.save()
+
+				#permanecer logueado despues de cambiar password
+				update_session_auth_hash(request, request.user)
+
+				message = "password actualizado"
+			else:
+				message = "error al actualizar"
+		else:
+			message = "form invalido"
+
+				
+
+		
+
+
+	contexto = {
+		'form' : form,
+		'message' : message,
+	}
+
+	return render(request, 'edit_password.html', contexto)
+
+
+@login_required(login_url = 'client:login')
 def logout(request):
 	logout_django(request)
 	return redirect('client:login')
-
-def create(request):
-	form = CreateUserForm(request.POST or None)
-	if request.method == 'POST':
-		if form.is_valid():
-			user = form.save(commit=false)
-			user.set_password(user.password)
-			user.save()
-			return redirect('client:login')
-
-	context = {
-		'form' : form
-	}
-	return render(request, 'create.html', context)
