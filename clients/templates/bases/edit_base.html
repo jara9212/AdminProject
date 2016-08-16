@@ -1,0 +1,26 @@
+{% load staticfiles %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>{%block title%}{%endblock%}</title>
+	<link rel="stylesheet" type="text/css" href="{% static "style.css" %}">
+</head>
+<body>
+	<h3>{%block subtitle%}{%endblock%}</h3>
+	<a href="{% url 'client:edit' %}">Editar</a>
+	<a href="{% url 'client:edit_password' %}">Editar password</a>
+	<a href="{% url 'client:show' user.username %}">Show</a>
+	<a href="{% url 'client:logout' %}">Salir</a>
+	{% if messages %}
+		<ul>
+		{% for message in messages %}
+			<li {% if message.tags %} class="message-{{ message.tags }}" {%endif%}>{{ message }}</li>
+		{% endfor %}
+		</ul>
+	{% endif %}
+	{%block content%}{%endblock%}
+</body>
+</html>
+

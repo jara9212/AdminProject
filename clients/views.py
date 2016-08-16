@@ -13,6 +13,11 @@ from django.views.generic import View,DetailView,CreateView
 from django.views.generic.edit import UpdateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 
+#mensajes con funciones
+from django.contrib import messages
+#mensajes con clases
+from django.contrib.messages.views import SuccessMessageMixin
+
 
 # Create your views here.
 """
@@ -125,12 +130,17 @@ class CreateClass(CreateView):
 # 	}
 # 	return render(request, 'create.html', context)
 
-class EditClass(LoginRequiredMixin, UpdateView):
+class EditClass(LoginRequiredMixin, UpdateView, SuccessMessageMixin):
 	login_url = 'cliente:login'
 	model = User
 	template_name = 'edit.html'
-	success_url = reverse_lazy('client:dashboard')
+	success_url = reverse_lazy('client:edit')
 	form_class = EditUserForm
+	success_message = "Tu usuario ha sido actualizado"
+
+	def form_valid(self, request, *args, **kwargs):
+		messages.success(self.request, self.success_message)
+		return super(EditClass, self).form_valid(request, *args, **kwargs)
 
 	def get_object(self, queryset=None):
 		return self.request.user
@@ -140,43 +150,30 @@ class EditClass(LoginRequiredMixin, UpdateView):
 """
 Funciones
 """
-@login_required(login_url = 'client:login')
+@login_required( login_url = 'client:login' )
 def edit_password(request):
-	message = None
-	form = EditPasswordForm(request.POST or None)
 	
+	form = EditPasswordForm(request.POST or None)
 	if request.method == 'POST':
 		if form.is_valid():
 			current_password = form.cleaned_data['password']
 			new_password = form.cleaned_data['new_password']
 
 			if authenticate(username = request.user.username, password = current_password):
-				request.user.set_password(new_password)
+				request.user.set_password(  new_password )
 				request.user.save()
 
-				#permanecer logueado despues de cambiar password
-				update_session_auth_hash(request, request.user)
-
-				message = "password actualizado"
+				update_session_auth_hash( request, request.user )
+				messages.success(request, 'password actualizado correctamente')
 			else:
-				message = "error al actualizar"
-		else:
-			message = "form invalido"
+				messages.error(request, 'No es posible actualizar el password')
+
+	context = {'form' : form }
+	return render(request, 'edit_password.html', context)
 
 				
 
-		
-
-
-	contexto = {
-		'form' : form,
-		'message' : message,
-	}
-
-	return render(request, 'edit_password.html', contexto)
-
-
-@login_required(login_url = 'client:login')
+@login_required( login_url = 'client:login' )
 def logout(request):
 	logout_django(request)
 	return redirect('client:login')
